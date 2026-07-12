@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Убедись, что версия совпадает с .python-version и pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv sync --no-dev # Или uv sync, если хочешь ставить всё сразу
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Run linter
+        run: uv run ruff check .
