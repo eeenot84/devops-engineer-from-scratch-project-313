@@ -5,115 +5,98 @@
 
 # Flask App
 
-Простое Flask-приложение с эндпоинтом `/ping` и мониторингом ошибок через Sentry.
-Деплой: **SourceCraft CI/CD → Yandex Container Registry → Serverless Containers**.
+Flask URL shortener с CRUD API, PostgreSQL (SQLModel), Sentry и деплоем в Yandex Serverless Containers.
 
 ## Демо
 
-Приложение развёрнуто в Yandex Serverless Containers (HTTPS):
-
 https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/
-
-Проверка:
 
 ```bash
 curl https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/ping
 ```
 
-Ожидаемый ответ: `pong`.
+## API (короткие ссылки)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/links` | Список ссылок |
+| `POST` | `/api/links` | Создать ссылку (`201`) |
+| `GET` | `/api/links/<id>` | Получить ссылку |
+| `PUT` | `/api/links/<id>` | Обновить ссылку |
+| `DELETE` | `/api/links/<id>` | Удалить (`204`) |
+
+Пример создания:
+
+```bash
+curl -X POST https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links \
+  -H 'Content-Type: application/json' \
+  -d '{"original_url":"https://example.com/long-url","short_name":"exmpl"}'
+```
+
+При конфликте `short_name` ответ: `409` и `{"error":"Entity with short_name already exists"}`.
 
 ## Локальный запуск
 
-1. Убедитесь, что установлен `uv`.
-2. В корне проекта выполните:
+1. Скопируйте `.env.example` → `.env`.
+2. Поднимите PostgreSQL и приложение:
 
 ```bash
+make compose-up
+```
+
+Или только БД через compose и приложение локально:
+
+```bash
+docker compose up -d db
+cp .env.example .env   # DATABASE_URL на localhost:5433
 make run
 ```
 
-Приложение будет доступно на `http://localhost:8080/ping`.
+Приложение: `http://localhost:8080`.
 
 ## Переменные окружения
 
 | Переменная | Описание |
 |------------|----------|
-| `PORT` | Порт приложения (по умолчанию `8080`) |
-| `DATABASE_URL` | URL подключения к базе данных |
-| `SENTRY_DSN` | DSN проекта в Sentry для отправки ошибок |
+| `PORT` | Порт приложения (локально `8080`; в Serverless Containers задаёт платформа) |
+| `DATABASE_URL` | PostgreSQL, например `postgresql://app:app@localhost:5432/appdb` |
+| `BASE_URL` | Базовый URL для поля `short_url` (`{BASE_URL}/r/{short_name}`) |
+| `SENTRY_DSN` | DSN Sentry (опционально) |
+
+При старте приложения таблицы создаются автоматически (`SQLModel.metadata.create_all`).
 
 ## Docker
 
-Сборка образа:
-
 ```bash
 docker build -t flask-app .
-```
-
-Запуск контейнера:
-
-```bash
 docker run -p 8080:8080 \
-  -e PORT=8080 \
-  -e DATABASE_URL="postgresql://user:password@host:5432/dbname" \
-  -e SENTRY_DSN="https://<key>@sentry.io/<project>" \
+  -e DATABASE_URL="postgresql://app:app@host.docker.internal:5432/appdb" \
+  -e BASE_URL="http://localhost:8080" \
   flask-app
 ```
 
-## Деплой: Yandex Cloud + SourceCraft
+Или одной командой: `make compose-up`.
 
-### Инфраструктура (уже создана в каталоге)
+## Деплой: Yandex Cloud + SourceCraft
 
 | Ресурс | Значение |
 |--------|----------|
 | Folder ID | `b1geg64v3vhkruo9j5ba` |
 | Service Account | `github-action` (`ajedcqfhms8dprb7p0cg`) |
-| Container Registry | `github-action` (`crpbebkq9vcs5fd300rv`) |
-| Container name | `flask-app` |
+| Container Registry | `crpbebkq9vcs5fd300rv` |
+| Container | `flask-app` |
+| Service connection | `default-service-connection` |
 
-Роли SA: `container-registry.images.pusher`, `serverless-containers.editor`, `iam.serviceAccounts.user`, `serverless-containers.admin`.
-
-### Сервисное подключение в SourceCraft
-
-Создано: `default-service-connection` (каталог `default`, SA `github-action`).
-
-В [`.sourcecraft/ci.yaml`](.sourcecraft/ci.yaml) используется токен `SERVICE_CONNECTION`.
-
-### CI/CD
-
-Конфигурация: [`.sourcecraft/ci.yaml`](.sourcecraft/ci.yaml).
-
-При push в `main` в remote `sourcecraft`:
-
-1. Получается IAM-токен через service connection.
-2. Собирается Docker-образ (`linux/amd64`).
-3. Образ пушится в `cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest`.
-4. Деплоится публичная ревизия Serverless Container `flask-app` с env `DATABASE_URL`, `SENTRY_DSN` (`PORT` задаёт платформа).
+Push в SourceCraft запускает сборку и деплой:
 
 ```bash
 git push sourcecraft main
 ```
 
-Статус: репозиторий → **CI/CD**.
+В `revision-env` задайте реальный `DATABASE_URL` Managed PostgreSQL и `BASE_URL` (URL контейнера).
 
-## Sentry
-
-1. Создайте проект Flask в [Sentry](https://sentry.io/).
-2. Пропишите DSN в `revision-env` в `.sourcecraft/ci.yaml` (параметр `SENTRY_DSN`) и задеплойте снова.
-3. Откройте `/error` — ошибка должна появиться в Sentry.
-
-## Тесты и линтер
-
-Локально:
-
-```bash
-make test
-make lint
-```
-
-Или одной командой:
+## Тесты
 
 ```bash
 make test-lint
 ```
-
-В GitHub Actions на каждый push и pull request в `main` автоматически запускаются `pytest` и `ruff`.
