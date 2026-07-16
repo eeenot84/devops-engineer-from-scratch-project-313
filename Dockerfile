@@ -13,7 +13,6 @@ FROM python:3.10-slim
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
-    PORT=80 \
     PATH="/app/.venv/bin:$PATH"
 
 RUN apt-get update \
@@ -32,6 +31,6 @@ COPY --from=frontend /public /app/public
 
 RUN chmod +x /app/docker-entrypoint.sh
 
-EXPOSE 80
+EXPOSE 80 8080
 
 CMD ["/app/docker-entrypoint.sh"]

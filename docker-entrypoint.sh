@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-PORT="${PORT:-80}"
+PORT="${PORT:-8080}"
 export PORT
 
 mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy /tmp/nginx_fastcgi /tmp/nginx_uwsgi /tmp/nginx_scgi
