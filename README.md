@@ -74,7 +74,7 @@ CORS разрешает Origin `http://localhost:5173`. Короткие ссы�
 
 ## Docker (UI + API + Nginx)
 
-В образе: Nginx (порт `PORT`, по умолчанию `80`) раздаёт статику из `/app/public` и проксирует `/api/*`, `/r/*`, `/ping` на gunicorn.
+В образе: Nginx слушает `PORT` (локально через compose — `80`, в Yandex Serverless Containers — обычно `8080`), раздаёт статику из `/app/public` и проксирует `/api/*`, `/r/*`, `/ping` на gunicorn.
 
 ```bash
 make docker-build
