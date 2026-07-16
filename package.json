@@ -1,0 +1,19 @@
+{
+  "name": "devops-engineer-from-scratch-project-313",
+  "version": "1.0.0",
+  "private": true,
+  "description": "URL shortener: Flask API + Hexlet frontend",
+  "scripts": {
+    "postinstall": "node scripts/patch-frontend-proxy.mjs",
+    "start": "concurrently -n backend,frontend -c blue,magenta \"uv run python main.py\" \"npx start-hexlet-devops-deploy-crud-frontend\"",
+    "start:frontend": "npx start-hexlet-devops-deploy-crud-frontend",
+    "start:backend": "uv run python main.py"
+  },
+  "dependencies": {
+    "@hexlet/project-devops-deploy-crud-frontend": "^1.0.4",
+    "concurrently": "^9.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

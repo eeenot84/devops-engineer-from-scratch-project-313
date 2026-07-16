@@ -178,3 +178,47 @@ def test_delete_link_not_found(client):
     response = client.delete("/api/links/999")
     assert response.status_code == 404
     assert response.get_json() == {"error": "Not Found"}
+
+
+def test_cors_preflight(client):
+    response = client.options(
+        "/api/links",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+    assert response.status_code in (200, 204)
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:5173"
+
+
+def test_cors_exposes_content_range(client):
+    client.post(
+        "/api/links",
+        json={"original_url": "https://example.com/1", "short_name": "one"},
+    )
+    response = client.get(
+        "/api/links",
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 200
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:5173"
+    expose = response.headers.get("Access-Control-Expose-Headers", "")
+    assert "Content-Range" in expose
+
+
+def test_redirect_short_link(client):
+    client.post(
+        "/api/links",
+        json={"original_url": "https://example.com/target", "short_name": "go"},
+    )
+    response = client.get("/r/go")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "https://example.com/target"
+
+
+def test_redirect_short_link_not_found(client):
+    response = client.get("/r/missing")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Not Found"}
