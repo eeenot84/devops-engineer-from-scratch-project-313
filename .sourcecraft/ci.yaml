@@ -57,7 +57,8 @@ workflows:
               revision-concurrency: "4"
               revision-execution-timeout: "30"
               revision-image-url: cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest
-              # PORT задаёт платформа Serverless Containers — не передаём вручную
+              # PORT задаёт платформа. DATABASE_URL задайте реальный (Managed PostgreSQL)
+              # через yc/консоль или SourceCraft secrets — не коммитьте пароль в git.
               revision-env: |
-                DATABASE_URL=postgresql://user:password@host:5432/dbname
+                BASE_URL=https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net
                 SENTRY_DSN=
