@@ -1,0 +1,68 @@
+# CI/CD: SourceCraft → Yandex Container Registry → Serverless Containers
+# Docs: https://yandex.cloud/ru/docs/tutorials/serverless/ci-cd-sourcecraft-github-actions
+#
+# Перед первым успешным деплоем создайте в SourceCraft сервисное подключение:
+#   имя: default-service-connection
+#   каталог: b1geg64v3vhkruo9j5ba
+#   сервисный аккаунт: github-action (ajedcqfhms8dprb7p0cg)
+
+tokens:
+  yc-token:
+    service_connection: default-service-connection
+    scope: repo
+
+on:
+  push:
+    - workflows: [deploy-workflow]
+      filter:
+        branches: ["main"]
+
+workflows:
+  deploy-workflow:
+    tasks:
+      - name: build-push-deploy
+        cubes:
+          - name: get-iam-token
+            env:
+              ID_TOKEN: ${{ tokens.yc-token.id_token }}
+              YC_SA_ID: ${{ tokens.yc-token.service_account_id }}
+            image: cr.yandex/sourcecraft/yc-iam:latest
+
+          - name: setup-buildx
+            action: docker/setup-buildx-action@v3.11.1
+
+          - name: login
+            action: docker/login-action@v3.5.0
+            with:
+              registry: cr.yandex
+              username: iam
+              password: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
+
+          - name: build-and-push
+            action: docker/build-push-action@v6.18.0
+            with:
+              context: .
+              file: Dockerfile
+              platforms: linux/amd64
+              tags: |
+                cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest
+              push: true
+
+          - name: deploy
+            action: yc-actions/yc-sls-container-deploy@v4
+            with:
+              yc-iam-token: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
+              folder-id: b1geg64v3vhkruo9j5ba
+              container-name: flask-app
+              public: "true"
+              revision-service-account-id: ajedcqfhms8dprb7p0cg
+              revision-cores: "1"
+              revision-memory: 512Mb
+              revision-core-fraction: "100"
+              revision-concurrency: "4"
+              revision-execution-timeout: "30"
+              revision-image-url: cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest
+              revision-env: |
+                PORT=8080
+                DATABASE_URL=postgresql://user:password@host:5432/dbname
+                SENTRY_DSN=
