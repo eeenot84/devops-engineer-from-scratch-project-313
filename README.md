@@ -72,14 +72,11 @@ docker run -p 8080:8080 \
 
 Роли SA: `container-registry.images.pusher`, `serverless-containers.editor`, `iam.serviceAccounts.user`, `serverless-containers.admin`.
 
-### Сервисное подключение в SourceCraft (один раз)
+### Сервисное подключение в SourceCraft
 
-1. Откройте [SourceCraft](https://sourcecraft.dev/) → Организация → **Сервисные подключения**.
-2. Создайте подключение с именем `default-service-connection`.
-3. Укажите каталог `b1geg64v3vhkruo9j5ba` и SA `github-action`.
-4. Область применения — этот репозиторий.
+Создано: `default-service-connection` (каталог `default`, SA `github-action`).
 
-Нужна роль владельца организации SourceCraft.
+В [`.sourcecraft/ci.yaml`](.sourcecraft/ci.yaml) используется токен `SERVICE_CONNECTION`.
 
 ### CI/CD
 
