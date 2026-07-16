@@ -72,17 +72,20 @@ CORS разрешает Origin `http://localhost:5173`. Короткие ссы�
 
 При старте приложения таблицы создаются автоматически (`SQLModel.metadata.create_all`).
 
-## Docker
+## Docker (UI + API + Nginx)
+
+В образе: Nginx (порт `PORT`, по умолчанию `80`) раздаёт статику из `/app/public` и проксирует `/api/*`, `/r/*`, `/ping` на gunicorn.
 
 ```bash
-docker build -t flask-app .
-docker run -p 8080:8080 \
-  -e DATABASE_URL="postgresql://app:app@host.docker.internal:5432/appdb" \
+make docker-build
+docker run --rm -p 8080:80 \
+  -e PORT=80 \
+  -e DATABASE_URL="postgresql://app:app@host.docker.internal:5433/appdb" \
   -e BASE_URL="http://localhost:8080" \
   flask-app
 ```
 
-Или одной командой: `make compose-up`.
+Или: `make compose-up` → http://localhost:8080 (UI на корне, API на `/api/links`).
 
 ## Деплой: Yandex Cloud + SourceCraft
 

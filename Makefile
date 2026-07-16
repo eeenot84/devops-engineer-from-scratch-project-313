@@ -35,8 +35,8 @@ docker-build:
 	docker build -t flask-app .
 
 docker-run:
-	docker run --rm -p 8080:8080 \
-		-e PORT=8080 \
+	docker run --rm -p 8080:80 \
+		-e PORT=80 \
 		-e DATABASE_URL \
 		-e BASE_URL \
 		-e SENTRY_DSN \
