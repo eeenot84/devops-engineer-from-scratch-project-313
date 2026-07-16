@@ -10,21 +10,17 @@
 
 ## Демо
 
-После первого успешного деплоя URL контейнера появится в консоли Yandex Cloud → Serverless Containers → `flask-app` (поле «Ссылка для вызова»).
+Приложение развёрнуто в Yandex Serverless Containers (HTTPS):
+
+https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/
 
 Проверка:
 
 ```bash
-curl https://<CONTAINER_URL>/ping
+curl https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/ping
 ```
 
 Ожидаемый ответ: `pong`.
-
-Подставьте фактический URL сюда после деплоя:
-
-```text
-https://<CONTAINER_ID>.containers.yandexcloud.net/ping
-```
 
 ## Локальный запуск
 
@@ -94,7 +90,7 @@ docker run -p 8080:8080 \
 1. Получается IAM-токен через service connection.
 2. Собирается Docker-образ (`linux/amd64`).
 3. Образ пушится в `cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest`.
-4. Деплоится публичная ревизия Serverless Container `flask-app` с env `PORT`, `DATABASE_URL`, `SENTRY_DSN`.
+4. Деплоится публичная ревизия Serverless Container `flask-app` с env `DATABASE_URL`, `SENTRY_DSN` (`PORT` задаёт платформа).
 
 ```bash
 git push sourcecraft main
