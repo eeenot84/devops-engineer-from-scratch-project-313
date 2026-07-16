@@ -35,6 +35,14 @@ curl -X POST https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links \
 
 При конфликте `short_name` ответ: `409` и `{"error":"Entity with short_name already exists"}`.
 
+Пагинация списка:
+
+```bash
+curl -i 'https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links?range=[0,10]'
+```
+
+Ответ содержит заголовок `Content-Range: links 0-10/<total>` (`end` — исключительная граница, как в примерах задания).
+
 ## Локальный запуск
 
 1. Скопируйте `.env.example` → `.env`.
@@ -94,6 +102,14 @@ git push sourcecraft main
 ```
 
 В `revision-env` задайте реальный `DATABASE_URL` Managed PostgreSQL и `BASE_URL` (URL контейнера).
+
+**Важно:** в SourceCraft создайте секрет репозитория `DATABASE_URL` (Settings → Secrets), иначе каждый CI-деплой поднимет контейнер без БД и `/api/*` вернёт 502.
+
+Значение секрета (локально):
+
+```bash
+echo "postgresql://app:$(cat /tmp/flask-pg-pass.txt)@rc1a-tm37pp82er8ctt29.mdb.yandexcloud.net:6432/appdb?sslmode=require"
+```
 
 ## Тесты
 
