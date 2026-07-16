@@ -43,24 +43,22 @@ curl -i 'https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links?range
 
 Ответ содержит заголовок `Content-Range: links 0-10/<total>` (`end` — исключительная граница, как в примерах задания).
 
-## Локальный запуск
+## Локальный запуск (API + UI)
 
-1. Скопируйте `.env.example` → `.env`.
-2. Поднимите PostgreSQL и приложение:
-
-```bash
-make compose-up
-```
-
-Или только БД через compose и приложение локально:
+Нужны Node.js ≥ 20 и `uv`.
 
 ```bash
+make install          # uv sync + npm install
 docker compose up -d db
-cp .env.example .env   # DATABASE_URL на localhost:5433
-make run
+cp .env.example .env
+make run              # или: make run FRAMEWORK=flask
 ```
 
-Приложение: `http://localhost:8080`.
+- API: http://localhost:8080  
+- UI: http://localhost:5173  
+
+`make run` поднимает backend и фронтенд (`npx start-hexlet-devops-deploy-crud-frontend`) через `concurrently`.
+CORS разрешает Origin `http://localhost:5173`. Короткие ссылки: `/r/<short_name>`.
 
 ## Переменные окружения
 
@@ -69,6 +67,7 @@ make run
 | `PORT` | Порт приложения (локально `8080`; в Serverless Containers задаёт платформа) |
 | `DATABASE_URL` | PostgreSQL, например `postgresql://app:app@localhost:5432/appdb` |
 | `BASE_URL` | Базовый URL для поля `short_url` (`{BASE_URL}/r/{short_name}`) |
+| `CORS_ORIGINS` | Разрешённые Origin через запятую (по умолчанию localhost:5173) |
 | `SENTRY_DSN` | DSN Sentry (опционально) |
 
 При старте приложения таблицы создаются автоматически (`SQLModel.metadata.create_all`).

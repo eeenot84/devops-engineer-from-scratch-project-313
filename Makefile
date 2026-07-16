@@ -1,7 +1,25 @@
-.PHONY: run test lint test-lint docker-build docker-run compose-up compose-down
+.PHONY: run run-backend run-frontend test lint test-lint docker-build docker-run compose-up compose-down install
+
+FRAMEWORK ?= flask
+
+install:
+	uv sync
+	npm install
+
+run-backend:
+ifeq ($(FRAMEWORK),flask)
+	uv run python main.py
+else
+	$(error Unsupported FRAMEWORK=$(FRAMEWORK). Use FRAMEWORK=flask)
+endif
+
+run-frontend:
+	npx start-hexlet-devops-deploy-crud-frontend
 
 run:
-	uv run python main.py
+	npx concurrently -n backend,frontend -c blue,magenta \
+		"$(MAKE) run-backend FRAMEWORK=$(FRAMEWORK)" \
+		"$(MAKE) run-frontend"
 
 test:
 	uv run pytest
@@ -22,6 +40,7 @@ docker-run:
 		-e DATABASE_URL \
 		-e BASE_URL \
 		-e SENTRY_DSN \
+		-e CORS_ORIGINS \
 		flask-app
 
 compose-up:

@@ -4,7 +4,8 @@ import re
 
 import sentry_sdk
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, redirect, request
+from flask_cors import CORS
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -16,6 +17,14 @@ load_dotenv()
 
 DUPLICATE_SHORT_NAME = {"error": "Entity with short_name already exists"}
 RANGE_RE = re.compile(r"^\[\s*(-?\d+)\s*,\s*(-?\d+)\s*\]$")
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
 
 
 def parse_range(raw: str | None) -> tuple[int, int] | None:
@@ -43,6 +52,14 @@ def create_app() -> Flask:
         )
 
     app = Flask(__name__)
+    CORS(
+        app,
+        resources={r"/*": {"origins": CORS_ORIGINS}},
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Range"],
+        expose_headers=["Content-Range", "Accept-Ranges"],
+        supports_credentials=True,
+    )
     init_db()
 
     @app.errorhandler(404)
@@ -56,6 +73,16 @@ def create_app() -> Flask:
     @app.get("/error")
     def trigger_error():
         raise RuntimeError("Oops! Something went wrong!")
+
+    @app.get("/r/<short_name>")
+    def redirect_short_link(short_name: str):
+        with get_session() as session:
+            link = session.exec(
+                select(Link).where(Link.short_name == short_name)
+            ).first()
+            if link is None:
+                return jsonify({"error": "Not Found"}), 404
+            return redirect(link.original_url, code=302)
 
     @app.get("/api/links")
     def list_links():
