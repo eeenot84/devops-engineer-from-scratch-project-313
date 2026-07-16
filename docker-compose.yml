@@ -16,9 +16,9 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
-      PORT: "8080"
+      PORT: "80"
       DATABASE_URL: postgresql://app:app@db:5432/appdb
       BASE_URL: http://localhost:8080
       SENTRY_DSN: ""
