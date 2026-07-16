@@ -1,13 +1,8 @@
 # CI/CD: SourceCraft → Yandex Container Registry → Serverless Containers
-# Docs: https://yandex.cloud/ru/docs/tutorials/serverless/ci-cd-sourcecraft-github-actions
-#
-# Перед первым успешным деплоем создайте в SourceCraft сервисное подключение:
-#   имя: default-service-connection
-#   каталог: b1geg64v3vhkruo9j5ba
-#   сервисный аккаунт: github-action (ajedcqfhms8dprb7p0cg)
+# Сервисное подключение: default-service-connection
 
 tokens:
-  yc-token:
+  SERVICE_CONNECTION:
     service_connection: default-service-connection
     scope: repo
 
@@ -24,8 +19,8 @@ workflows:
         cubes:
           - name: get-iam-token
             env:
-              ID_TOKEN: ${{ tokens.yc-token.id_token }}
-              YC_SA_ID: ${{ tokens.yc-token.service_account_id }}
+              ID_TOKEN: ${{ tokens.SERVICE_CONNECTION.id_token }}
+              YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
             image: cr.yandex/sourcecraft/yc-iam:latest
 
           - name: setup-buildx
@@ -52,10 +47,10 @@ workflows:
             action: yc-actions/yc-sls-container-deploy@v4
             with:
               yc-iam-token: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
-              folder-id: b1geg64v3vhkruo9j5ba
+              folder-id: ${{ tokens.SERVICE_CONNECTION.folder_id }}
               container-name: flask-app
               public: "true"
-              revision-service-account-id: ajedcqfhms8dprb7p0cg
+              revision-service-account-id: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
               revision-cores: "1"
               revision-memory: 512Mb
               revision-core-fraction: "100"
