@@ -1,4 +1,6 @@
+import json
 import os
+import re
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -13,6 +15,21 @@ from models import Link, LinkCreate, LinkUpdate, link_to_read
 load_dotenv()
 
 DUPLICATE_SHORT_NAME = {"error": "Entity with short_name already exists"}
+RANGE_RE = re.compile(r"^\[\s*(-?\d+)\s*,\s*(-?\d+)\s*\]$")
+
+
+def parse_range(raw: str | None) -> tuple[int, int] | None:
+    """Parse range=[start, end]. End is exclusive (как в примерах задания)."""
+    if raw is None or raw == "":
+        return None
+    match = RANGE_RE.match(raw.strip())
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    try:
+        start, end = json.loads(raw)
+        return int(start), int(end)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
 
 
 def create_app() -> Flask:
@@ -44,7 +61,24 @@ def create_app() -> Flask:
     def list_links():
         with get_session() as session:
             links = session.exec(select(Link).order_by(Link.id)).all()
-            return jsonify([link_to_read(link) for link in links]), 200
+            total = len(links)
+            parsed = parse_range(request.args.get("range"))
+            if parsed is None:
+                start, end = 0, total
+                page = links
+            else:
+                start, end = parsed
+                if start < 0:
+                    start = 0
+                if end < start:
+                    end = start
+                page = links[start:end]
+
+            response = jsonify([link_to_read(link) for link in page])
+            response.headers["Content-Range"] = f"links {start}-{end}/{total}"
+            response.headers["Accept-Ranges"] = "links"
+            response.status_code = 200
+            return response
 
     @app.post("/api/links")
     def create_link():

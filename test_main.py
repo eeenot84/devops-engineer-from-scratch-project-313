@@ -68,6 +68,41 @@ def test_list_links(client):
     assert len(data) == 2
     assert data[0]["short_name"] == "one"
     assert data[1]["short_name"] == "two"
+    assert response.headers["Content-Range"] == "links 0-2/2"
+
+
+def _seed_links(client, count: int) -> None:
+    for i in range(count):
+        client.post(
+            "/api/links",
+            json={
+                "original_url": f"https://example.com/{i}",
+                "short_name": f"name-{i}",
+            },
+        )
+
+
+def test_list_links_range_first_page(client):
+    _seed_links(client, 12)
+    response = client.get("/api/links", query_string={"range": "[0,10]"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data) == 10
+    assert data[0]["short_name"] == "name-0"
+    assert data[9]["short_name"] == "name-9"
+    assert response.headers["Content-Range"] == "links 0-10/12"
+    assert response.headers["Accept-Ranges"] == "links"
+
+
+def test_list_links_range_skip(client):
+    _seed_links(client, 11)
+    response = client.get("/api/links", query_string={"range": "[5, 10]"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data) == 5
+    assert data[0]["short_name"] == "name-5"
+    assert data[4]["short_name"] == "name-9"
+    assert response.headers["Content-Range"] == "links 5-10/11"
 
 
 def test_get_link(client):

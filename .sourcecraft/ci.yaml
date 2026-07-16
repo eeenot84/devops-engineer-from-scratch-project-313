@@ -1,5 +1,9 @@
 # CI/CD: SourceCraft → Yandex Container Registry → Serverless Containers
 # Сервисное подключение: default-service-connection
+#
+# Обязательный секрет репозитория SourceCraft:
+#   DATABASE_URL = postgresql://app:<PASS>@rc1a-tm37pp82er8ctt29.mdb.yandexcloud.net:6432/appdb?sslmode=require
+# (Settings → Secrets). Без него деплой поднимет контейнер, который упадёт на /api/*.
 
 tokens:
   SERVICE_CONNECTION:
@@ -57,8 +61,7 @@ workflows:
               revision-concurrency: "4"
               revision-execution-timeout: "30"
               revision-image-url: cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest
-              # PORT задаёт платформа. DATABASE_URL задайте реальный (Managed PostgreSQL)
-              # через yc/консоль или SourceCraft secrets — не коммитьте пароль в git.
               revision-env: |
+                DATABASE_URL=${{ secrets.DATABASE_URL }}
                 BASE_URL=https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net
                 SENTRY_DSN=
