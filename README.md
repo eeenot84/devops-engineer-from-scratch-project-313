@@ -6,20 +6,25 @@
 # Flask App
 
 Простое Flask-приложение с эндпоинтом `/ping` и мониторингом ошибок через Sentry.
+Деплой: **SourceCraft CI/CD → Yandex Container Registry → Serverless Containers**.
 
 ## Демо
 
-Приложение развёрнуто на Render (HTTPS):
-
-https://devops-engineer-from-scratch-project-313.onrender.com
+После первого успешного деплоя URL контейнера появится в консоли Yandex Cloud → Serverless Containers → `flask-app` (поле «Ссылка для вызова»).
 
 Проверка:
 
 ```bash
-curl https://devops-engineer-from-scratch-project-313.onrender.com/ping
+curl https://<CONTAINER_URL>/ping
 ```
 
 Ожидаемый ответ: `pong`.
+
+Подставьте фактический URL сюда после деплоя:
+
+```text
+https://<CONTAINER_ID>.containers.yandexcloud.net/ping
+```
 
 ## Локальный запуск
 
@@ -58,27 +63,50 @@ docker run -p 8080:8080 \
   flask-app
 ```
 
-## Деплой на Render
+## Деплой: Yandex Cloud + SourceCraft
 
-1. Создайте Web Service на [Render](https://render.com/).
-2. Подключите репозиторий GitHub.
-3. Выберите **Language — Docker**.
-4. Укажите **Instance Type — Free**.
-5. В **Environment Variables** добавьте:
-   - `PORT=8080`
-   - `DATABASE_URL` — URL вашей PostgreSQL (можно создать Free PostgreSQL на Render)
-   - `SENTRY_DSN` — DSN из [Sentry](https://sentry.io/)
-6. После деплоя приложение будет доступно по HTTPS.
+### Инфраструктура (уже создана в каталоге)
+
+| Ресурс | Значение |
+|--------|----------|
+| Folder ID | `b1geg64v3vhkruo9j5ba` |
+| Service Account | `github-action` (`ajedcqfhms8dprb7p0cg`) |
+| Container Registry | `github-action` (`crpbebkq9vcs5fd300rv`) |
+| Container name | `flask-app` |
+
+Роли SA: `container-registry.images.pusher`, `serverless-containers.editor`, `iam.serviceAccounts.user`, `serverless-containers.admin`.
+
+### Сервисное подключение в SourceCraft (один раз)
+
+1. Откройте [SourceCraft](https://sourcecraft.dev/) → Организация → **Сервисные подключения**.
+2. Создайте подключение с именем `default-service-connection`.
+3. Укажите каталог `b1geg64v3vhkruo9j5ba` и SA `github-action`.
+4. Область применения — этот репозиторий.
+
+Нужна роль владельца организации SourceCraft.
+
+### CI/CD
+
+Конфигурация: [`.sourcecraft/ci.yaml`](.sourcecraft/ci.yaml).
+
+При push в `main` в remote `sourcecraft`:
+
+1. Получается IAM-токен через service connection.
+2. Собирается Docker-образ (`linux/amd64`).
+3. Образ пушится в `cr.yandex/crpbebkq9vcs5fd300rv/flask-app:latest`.
+4. Деплоится публичная ревизия Serverless Container `flask-app` с env `PORT`, `DATABASE_URL`, `SENTRY_DSN`.
+
+```bash
+git push sourcecraft main
+```
+
+Статус: репозиторий → **CI/CD**.
 
 ## Sentry
 
-Для проверки отправки ошибок откройте:
-
-```text
-/error
-```
-
-Ошибка должна появиться в проекте Sentry.
+1. Создайте проект Flask в [Sentry](https://sentry.io/).
+2. Пропишите DSN в `revision-env` в `.sourcecraft/ci.yaml` (параметр `SENTRY_DSN`) и задеплойте снова.
+3. Откройте `/error` — ошибка должна появиться в Sentry.
 
 ## Тесты и линтер
 
@@ -95,4 +123,4 @@ make lint
 make test-lint
 ```
 
-В CI (GitHub Actions) на каждый push и pull request в `main` автоматически запускаются `pytest` и `ruff`.
+В GitHub Actions на каждый push и pull request в `main` автоматически запускаются `pytest` и `ruff`.
