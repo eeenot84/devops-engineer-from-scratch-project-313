@@ -8,7 +8,7 @@ RUN npm ci --omit=dev --ignore-scripts \
   && cp -r ./node_modules/@hexlet/project-devops-deploy-crud-frontend/dist/. /public/
 
 # --- app + nginx ---
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 

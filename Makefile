@@ -1,6 +1,8 @@
-.PHONY: run run-backend run-frontend test lint test-lint docker-build docker-run compose-up compose-down install
+.PHONY: setup install run run-backend run-frontend test lint test-lint docker-build docker-run compose-up compose-down
 
 FRAMEWORK ?= flask
+
+setup: install
 
 install:
 	uv sync
