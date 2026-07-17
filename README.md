@@ -5,113 +5,58 @@
 
 # Flask App
 
-Flask URL shortener с CRUD API, PostgreSQL (SQLModel), Sentry и деплоем в Yandex Serverless Containers.
+Короткий URL-сервис: Flask + PostgreSQL + UI. Деплой в Yandex Serverless Containers.
 
-## Демо
+**Демо:** https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/
 
-https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/
-
-```bash
-curl https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/ping
-```
-
-## API (короткие ссылки)
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| `GET` | `/api/links` | Список ссылок |
-| `POST` | `/api/links` | Создать ссылку (`201`) |
-| `GET` | `/api/links/<id>` | Получить ссылку |
-| `PUT` | `/api/links/<id>` | Обновить ссылку |
-| `DELETE` | `/api/links/<id>` | Удалить (`204`) |
-
-Пример создания:
+## Локально
 
 ```bash
-curl -X POST https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links \
-  -H 'Content-Type: application/json' \
-  -d '{"original_url":"https://example.com/long-url","short_name":"exmpl"}'
-```
-
-При конфликте `short_name` ответ: `409` и `{"error":"Entity with short_name already exists"}`.
-
-Пагинация списка:
-
-```bash
-curl -i 'https://bbas83kfi3oo3s9cv3na.containers.yandexcloud.net/api/links?range=[0,10]'
-```
-
-Ответ содержит заголовок `Content-Range: links 0-10/<total>` (`end` — исключительная граница, как в примерах задания).
-
-## Локальный запуск (API + UI)
-
-Нужны Node.js ≥ 20 и `uv`.
-
-```bash
-make install          # uv sync + npm install
+make install
 docker compose up -d db
 cp .env.example .env
-make run              # или: make run FRAMEWORK=flask
+make run
 ```
 
 - API: http://localhost:8080  
 - UI: http://localhost:5173  
 
-`make run` поднимает backend и фронтенд (`npx start-hexlet-devops-deploy-crud-frontend`) через `concurrently`.
-CORS разрешает Origin `http://localhost:5173`. Короткие ссылки: `/r/<short_name>`.
-
-## Переменные окружения
-
-| Переменная | Описание |
-|------------|----------|
-| `PORT` | Порт приложения (локально `8080`; в Serverless Containers задаёт платформа) |
-| `DATABASE_URL` | PostgreSQL, например `postgresql://app:app@localhost:5432/appdb` |
-| `BASE_URL` | Базовый URL для поля `short_url` (`{BASE_URL}/r/{short_name}`) |
-| `CORS_ORIGINS` | Разрешённые Origin через запятую (по умолчанию localhost:5173) |
-| `SENTRY_DSN` | DSN Sentry (опционально) |
-
-При старте приложения таблицы создаются автоматически (`SQLModel.metadata.create_all`).
-
-## Docker (UI + API + Nginx)
-
-В образе: Nginx слушает `PORT` (локально через compose — `80`, в Yandex Serverless Containers — обычно `8080`), раздаёт статику из `/app/public` и проксирует `/api/*`, `/r/*`, `/ping` на gunicorn.
+Всё в одном контейнере (Nginx + UI + API):
 
 ```bash
-make docker-build
-docker run --rm -p 8080:80 \
-  -e PORT=80 \
-  -e DATABASE_URL="postgresql://app:app@host.docker.internal:5433/appdb" \
-  -e BASE_URL="http://localhost:8080" \
-  flask-app
+make compose-up
 ```
 
-Или: `make compose-up` → http://localhost:8080 (UI на корне, API на `/api/links`).
+→ http://localhost:8080
 
-## Деплой: Yandex Cloud + SourceCraft
+## API
 
-| Ресурс | Значение |
-|--------|----------|
-| Folder ID | `b1geg64v3vhkruo9j5ba` |
-| Service Account | `github-action` (`ajedcqfhms8dprb7p0cg`) |
-| Container Registry | `crpbebkq9vcs5fd300rv` |
-| Container | `flask-app` |
-| Service connection | `default-service-connection` |
+| Метод | Путь |
+|-------|------|
+| `GET` / `POST` | `/api/links` |
+| `GET` / `PUT` / `DELETE` | `/api/links/<id>` |
+| `GET` | `/r/<short_name>` — редирект |
+| `GET` | `/ping` |
 
-Push в SourceCraft запускает сборку и деплой:
+Список с пагинацией: `?range=[0,10]` (заголовок `Content-Range`).
+
+## Env
+
+| Переменная | Зачем |
+|------------|--------|
+| `PORT` | Порт (локально `8080`, в Yandex — `8080`) |
+| `DATABASE_URL` | PostgreSQL |
+| `BASE_URL` | База для `short_url` |
+| `CORS_ORIGINS` | CORS (по умолчанию localhost:5173) |
+| `SENTRY_DSN` | Sentry (опционально) |
+
+## Деплой
 
 ```bash
 git push sourcecraft main
 ```
 
-В `revision-env` задайте реальный `DATABASE_URL` Managed PostgreSQL и `BASE_URL` (URL контейнера).
-
-**Важно:** в SourceCraft создайте секрет репозитория `DATABASE_URL` (Settings → Secrets), иначе каждый CI-деплой поднимет контейнер без БД и `/api/*` вернёт 502.
-
-Значение секрета (локально):
-
-```bash
-echo "postgresql://app:$(cat /tmp/flask-pg-pass.txt)@rc1a-tm37pp82er8ctt29.mdb.yandexcloud.net:6432/appdb?sslmode=require"
-```
+В SourceCraft нужен секрет `DATABASE_URL` и в окружении контейнера — `BASE_URL`.
 
 ## Тесты
 
