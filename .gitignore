@@ -5,7 +5,9 @@ __pycache__/
 .ruff_cache/
 .env
 .idea/
+.vscode/
 *.egg-info/
 dist/
 build/
 node_modules/
+.DS_Store
