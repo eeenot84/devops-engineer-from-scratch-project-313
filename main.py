@@ -6,6 +6,7 @@ import sentry_sdk
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
+from pydantic import ValidationError
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -41,6 +42,33 @@ def parse_range(raw: str | None) -> tuple[int, int] | None:
         return None
 
 
+def error_detail(detail, status: int):
+    return jsonify({"detail": detail}), status
+
+
+def parse_body(model):
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return None, error_detail(
+            [
+                {
+                    "type": "model_attributes_type",
+                    "loc": ["body"],
+                    "msg": (
+                        "Input should be a valid dictionary or object "
+                        "to extract fields from"
+                    ),
+                    "input": payload,
+                }
+            ],
+            422,
+        )
+    try:
+        return model.model_validate(payload), None
+    except ValidationError as exc:
+        return None, error_detail(exc.errors(), 422)
+
+
 def create_app() -> Flask:
     reset_engine()
 
@@ -64,7 +92,7 @@ def create_app() -> Flask:
 
     @app.errorhandler(404)
     def not_found(_error):
-        return jsonify({"error": "Not Found"}), 404
+        return error_detail("Not Found", 404)
 
     @app.get("/ping")
     def ping():
@@ -81,7 +109,7 @@ def create_app() -> Flask:
                 select(Link).where(Link.short_name == short_name)
             ).first()
             if link is None:
-                return jsonify({"error": "Not Found"}), 404
+                return error_detail("Not Found", 404)
             return redirect(link.original_url, code=302)
 
     @app.get("/api/links")
@@ -109,8 +137,9 @@ def create_app() -> Flask:
 
     @app.post("/api/links")
     def create_link():
-        payload = request.get_json(silent=True) or {}
-        data = LinkCreate.model_validate(payload)
+        data, err = parse_body(LinkCreate)
+        if err is not None:
+            return err
         link = Link(original_url=data.original_url, short_name=data.short_name)
         with get_session() as session:
             session.add(link)
@@ -127,17 +156,18 @@ def create_app() -> Flask:
         with get_session() as session:
             link = session.get(Link, link_id)
             if link is None:
-                return jsonify({"error": "Not Found"}), 404
+                return error_detail("Not Found", 404)
             return jsonify(link_to_read(link)), 200
 
     @app.put("/api/links/<int:link_id>")
     def update_link(link_id: int):
-        payload = request.get_json(silent=True) or {}
-        data = LinkUpdate.model_validate(payload)
+        data, err = parse_body(LinkUpdate)
+        if err is not None:
+            return err
         with get_session() as session:
             link = session.get(Link, link_id)
             if link is None:
-                return jsonify({"error": "Not Found"}), 404
+                return error_detail("Not Found", 404)
             link.original_url = data.original_url
             link.short_name = data.short_name
             session.add(link)
@@ -154,7 +184,7 @@ def create_app() -> Flask:
         with get_session() as session:
             link = session.get(Link, link_id)
             if link is None:
-                return jsonify({"error": "Not Found"}), 404
+                return error_detail("Not Found", 404)
             session.delete(link)
             session.commit()
             return ("", 204)

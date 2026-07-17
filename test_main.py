@@ -118,7 +118,37 @@ def test_get_link(client):
 def test_get_link_not_found(client):
     response = client.get("/api/links/999")
     assert response.status_code == 404
-    assert response.get_json() == {"error": "Not Found"}
+    assert response.get_json() == {"detail": "Not Found"}
+
+
+def test_create_link_validation_error(client):
+    response = client.post("/api/links", json={})
+    assert response.status_code == 422
+    assert "detail" in response.get_json()
+
+
+def test_update_link_malformed_payload(client):
+    created = client.post(
+        "/api/links",
+        json={"original_url": "https://example.com/old", "short_name": "old"},
+    ).get_json()
+    response = client.put(
+        f"/api/links/{created['id']}",
+        data='"not-json"',
+        content_type="application/json",
+    )
+    assert response.status_code == 422
+    body = response.get_json()
+    assert isinstance(body["detail"], list)
+
+
+def test_update_link_not_found(client):
+    response = client.put(
+        "/api/links/999",
+        json={"original_url": "https://example.com/new", "short_name": "new"},
+    )
+    assert response.status_code == 404
+    assert response.get_json() == {"detail": "Not Found"}
 
 
 def test_update_link(client):
@@ -135,15 +165,6 @@ def test_update_link(client):
     assert data["original_url"] == "https://example.com/new"
     assert data["short_name"] == "new"
     assert data["short_url"] == "https://short.io/r/new"
-
-
-def test_update_link_not_found(client):
-    response = client.put(
-        "/api/links/999",
-        json={"original_url": "https://example.com/new", "short_name": "new"},
-    )
-    assert response.status_code == 404
-    assert response.get_json() == {"error": "Not Found"}
 
 
 def test_update_link_duplicate_short_name(client):
@@ -177,7 +198,7 @@ def test_delete_link(client):
 def test_delete_link_not_found(client):
     response = client.delete("/api/links/999")
     assert response.status_code == 404
-    assert response.get_json() == {"error": "Not Found"}
+    assert response.get_json() == {"detail": "Not Found"}
 
 
 def test_cors_preflight(client):
@@ -221,4 +242,4 @@ def test_redirect_short_link(client):
 def test_redirect_short_link_not_found(client):
     response = client.get("/r/missing")
     assert response.status_code == 404
-    assert response.get_json() == {"error": "Not Found"}
+    assert response.get_json() == {"detail": "Not Found"}
