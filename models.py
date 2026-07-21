@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+from pydantic import field_validator
 from sqlalchemy import Column, DateTime, text
 from sqlmodel import Field, SQLModel
 
@@ -8,6 +9,14 @@ from sqlmodel import Field, SQLModel
 class LinkBase(SQLModel):
     original_url: str
     short_name: str = Field(index=True, unique=True, max_length=255)
+
+    @field_validator("original_url")
+    @classmethod
+    def original_url_must_be_http(cls, value: str) -> str:
+        url = value.strip()
+        if not (url.startswith("http://") or url.startswith("https://")):
+            raise ValueError("original_url must start with http:// or https://")
+        return url
 
 
 class Link(LinkBase, table=True):

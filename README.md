@@ -56,7 +56,7 @@ make compose-up
 git push sourcecraft main
 ```
 
-В SourceCraft нужен секрет `DATABASE_URL` и в окружении контейнера — `BASE_URL`.
+В SourceCraft нужны секреты `DATABASE_URL` и `BASE_URL`.
 
 ## Тесты
 

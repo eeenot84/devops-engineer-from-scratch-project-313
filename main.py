@@ -9,7 +9,7 @@ from flask_cors import CORS
 from pydantic import ValidationError
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import select
+from sqlmodel import col, func, select
 
 from database import get_session, init_db, reset_engine
 from models import Link, LinkCreate, LinkUpdate, link_to_read
@@ -66,7 +66,10 @@ def parse_body(model):
     try:
         return model.model_validate(payload), None
     except ValidationError as exc:
-        return None, error_detail(exc.errors(), 422)
+        return None, error_detail(
+            json.loads(exc.json()),
+            422,
+        )
 
 
 def create_app() -> Flask:
@@ -115,19 +118,21 @@ def create_app() -> Flask:
     @app.get("/api/links")
     def list_links():
         with get_session() as session:
-            links = session.exec(select(Link).order_by(Link.id)).all()
-            total = len(links)
+            total = session.exec(select(func.count()).select_from(Link)).one()
             parsed = parse_range(request.args.get("range"))
             if parsed is None:
                 start, end = 0, total
-                page = links
             else:
                 start, end = parsed
                 if start < 0:
                     start = 0
                 if end < start:
                     end = start
-                page = links[start:end]
+
+            query = select(Link).order_by(col(Link.id))
+            if parsed is not None:
+                query = query.offset(start).limit(end - start)
+            page = session.exec(query).all()
 
             response = jsonify([link_to_read(link) for link in page])
             response.headers["Content-Range"] = f"links {start}-{end}/{total}"

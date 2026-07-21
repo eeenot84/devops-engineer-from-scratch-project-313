@@ -127,6 +127,15 @@ def test_create_link_validation_error(client):
     assert "detail" in response.get_json()
 
 
+def test_create_link_rejects_non_http_url(client):
+    response = client.post(
+        "/api/links",
+        json={"original_url": "ftp://example.com/file", "short_name": "ftp"},
+    )
+    assert response.status_code == 422
+    assert "detail" in response.get_json()
+
+
 def test_update_link_malformed_payload(client):
     created = client.post(
         "/api/links",
